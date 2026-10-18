@@ -55,12 +55,38 @@ public:
         return *this;
     }
 
+    void reservar(int n) {
+        if (n > capacidad) {
+            crecer(n);
+        }
+    }
+
     void agregar(const T& valor) {
         if (cantidad == capacidad) {
             crecer(cantidad + 1);
         }
         datos[cantidad] = valor;
         cantidad++;
+    }
+
+    void eliminar(int pos) {
+        if (pos < 0 || pos >= cantidad) {
+            return;
+        }
+        for (int i = pos; i < cantidad - 1; i++) {
+            datos[i] = datos[i + 1];
+        }
+        cantidad--;
+    }
+
+    // Busqueda lineal, devuelve la posicion o -1
+    int buscar(const T& valor) const {
+        for (int i = 0; i < cantidad; i++) {
+            if (datos[i] == valor) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     T& operator[](int pos) {
@@ -73,6 +99,10 @@ public:
 
     int tamano() const {
         return cantidad;
+    }
+
+    int getCapacidad() const {
+        return capacidad;
     }
 
     bool vacia() const {
