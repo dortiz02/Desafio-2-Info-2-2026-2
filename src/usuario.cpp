@@ -83,13 +83,12 @@ const Lista<int>& Usuario::getAmigos() const {
     return amigos;
 }
 
-// Version inicial: agrega al final y busca linealmente
 void Usuario::agregarAmigo(int idAmigo) {
-    amigos.agregar(idAmigo);
+    amigos.insertarOrdenado(idAmigo);
 }
 
 bool Usuario::esAmigo(int idUsuario) const {
-    return amigos.buscar(idUsuario) != -1;
+    return amigos.buscarBinaria(idUsuario) != -1;
 }
 
 const Lista<int>& Usuario::getSolicitudesRecibidas() const {
