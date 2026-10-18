@@ -69,6 +69,20 @@ public:
         cantidad++;
     }
 
+    // Inserta manteniendo el orden ascendente
+    void insertarOrdenado(const T& valor) {
+        if (cantidad == capacidad) {
+            crecer(cantidad + 1);
+        }
+        int pos = cantidad;
+        while (pos > 0 && datos[pos - 1] > valor) {
+            datos[pos] = datos[pos - 1];
+            pos--;
+        }
+        datos[pos] = valor;
+        cantidad++;
+    }
+
     void eliminar(int pos) {
         if (pos < 0 || pos >= cantidad) {
             return;
@@ -84,6 +98,24 @@ public:
         for (int i = 0; i < cantidad; i++) {
             if (datos[i] == valor) {
                 return i;
+            }
+        }
+        return -1;
+    }
+
+    // Busqueda binaria, solo sirve si la lista esta ordenada
+    int buscarBinaria(const T& valor) const {
+        int inicio = 0;
+        int fin = cantidad - 1;
+        while (inicio <= fin) {
+            int medio = (inicio + fin) / 2;
+            if (datos[medio] == valor) {
+                return medio;
+            }
+            if (datos[medio] < valor) {
+                inicio = medio + 1;
+            } else {
+                fin = medio - 1;
             }
         }
         return -1;
