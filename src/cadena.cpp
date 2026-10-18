@@ -30,6 +30,15 @@ bool Cadena::esVacio(const std::string& texto) {
     return true;
 }
 
+unsigned long Cadena::hash(const std::string& texto) {
+    unsigned long h = 5381;
+    int n = (int)texto.size();
+    for (int i = 0; i < n; i++) {
+        h = h * 33 + (unsigned char)texto[i];
+    }
+    return h;
+}
+
 int Cadena::dividirEnteros(const std::string& texto, char separador, int* valores, int maximo) {
     int cuantos = 0;
     int actual = 0;
