@@ -36,7 +36,9 @@ void Foto::darLike() {
 }
 
 void Foto::quitarLike() {
-    likes--;
+    if (likes > 0) {
+        likes--;
+    }
 }
 
 bool Foto::operator==(const Foto& otra) const {
