@@ -16,6 +16,7 @@ private:
     IndiceUsuarios indice;
     Fecha fechaActual;
     std::string rutaBase;
+    int enviosSesion;
     std::mt19937 generador;
 
     void liberar();
@@ -28,6 +29,12 @@ public:
     static const int SOL_YA_AMIGOS = 3;
     static const int SOL_YA_ENVIADA = 4;
     static const int SOL_YA_RECIBIDA = 5;
+
+    static const int MSG_OK = 0;
+    static const int MSG_NO_EXISTE = 1;
+    static const int MSG_NO_AMIGO = 2;
+    static const int MSG_VACIO = 3;
+    static const int MSG_MUY_LARGO = 4;
 
     RedSocial();
     RedSocial(const RedSocial& otra);
@@ -59,6 +66,12 @@ public:
     int elegirMejoresAmigos(int idUsuario, int* resultado, const int* excluidos, int cantExcluidos);
     int enviarSolicitud(int idUsuario, const std::string& nombreDestino);
     bool aceptarSolicitud(int idUsuario, int posicion);
+    int sugerirAmigos(int idUsuario, int k, int* ids, int* comunes) const;
+
+    int enviarMensaje(int idEmisor, const std::string& nombreDestino, const std::string& texto);
+    void recopilarNoLeidos(int idUsuario, Lista<int>& salida) const;
+    void marcarLeidos(const Lista<int>& ids);
+    bool buscarPorRango(int idUsuario, const Fecha& inicio, const Fecha& fin, Lista<int>& salida) const;
 };
 
 #endif
