@@ -36,6 +36,7 @@ Consola& Consola::operator=(const Consola& otra) {
     return *this;
 }
 
+
 std::string Consola::leerLinea(const std::string& mensaje) {
     std::cout << mensaje;
     std::string linea;
@@ -104,10 +105,11 @@ void Consola::mostrarResultadoSolicitud(int codigo) {
     }
 }
 
+
 void Consola::ejecutar(const std::string& ruta) {
     rutaDatos = ruta;
 
-
+    // I. Carga de datos (no aparece en el menu del usuario)
     Medidor::reiniciar();
     if (!Almacenamiento::cargar(red, rutaDatos)) {
         std::cout << "No se pudo cargar el archivo de datos: " << rutaDatos << "\n";
@@ -141,7 +143,6 @@ void Consola::ejecutar(const std::string& ruta) {
         }
     }
 
- 
     Medidor::reiniciar();
     if (Almacenamiento::guardar(red, rutaDatos)) {
         std::cout << "\nCambios guardados en " << rutaDatos << "\n";
@@ -153,28 +154,13 @@ void Consola::ejecutar(const std::string& ruta) {
 
 
 void Consola::iniciarSesion() {
-    const Usuario& yo = red.getUsuario(usuarioActual);
-    std::cout << "\nBienvenido, " << yo.getNombre() << " (" << yo.getCiudad() << ", " << yo.getPais() << ")\n";
-
     yaActualizo = false;
     cantidadMejores = red.elegirMejoresAmigos(usuarioActual, mejoresAmigos, nullptr, 0);
+    std::cout << "\n";
     mostrarMejoresAmigos();
-
-    if (cantidadMejores > 0) {
-        int opcion = leerEntero("Desea actualizar estas fotos? Solo se puede una vez (1 = si, 0 = no): ", 0, 1);
-        if (opcion == 1) {
-            int anteriores[3];
-            int cuantosAnteriores = cantidadMejores;
-            for (int i = 0; i < 3; i++) {
-                anteriores[i] = mejoresAmigos[i];
-            }
-            cantidadMejores = red.elegirMejoresAmigos(usuarioActual, mejoresAmigos, anteriores, cuantosAnteriores);
-            yaActualizo = true;
-            Medidor::sumarLocales(sizeof(int) * 5);
-            mostrarMejoresAmigos();
-        }
-    }
-    Medidor::sumarLocales(sizeof(int) * 2 + sizeof(void*));
+    const Usuario& yo = red.getUsuario(usuarioActual);
+    std::cout << "\nBienvenido a UdeaBook " << yo.getNombre() << " (" << yo.getCiudad() << ", " << yo.getPais() << ")\n";
+    Medidor::sumarLocales(sizeof(void*));
     mostrarMetricas();
 }
 
@@ -183,35 +169,65 @@ void Consola::mostrarMejoresAmigos() {
         std::cout << "Aun no tienes amigos para mostrar.\n";
         return;
     }
-    std::cout << "\nFotos de perfil de tus amigos:\n";
     for (int i = 0; i < cantidadMejores; i++) {
         Medidor::contarDirecta();
         const Usuario& amigo = red.getUsuario(mejoresAmigos[i]);
-        std::cout << "  " << (i + 1) << ". " << amigo.getNombre() << " -> " << amigo.getRutaFotoPerfil()
-                  << " (" << red.amigosEnComun(usuarioActual, mejoresAmigos[i]) << " amigos en comun)\n";
+        std::cout << "Foto perfil de amigo " << (i + 1) << ": " << amigo.getRutaFotoPerfil()
+                  << " (" << amigo.getNombre() << ", "
+                  << red.amigosEnComun(usuarioActual, mejoresAmigos[i]) << " amigos en comun)\n";
     }
+}
+
+void Consola::alternarMejoresAmigos() {
+    Medidor::reiniciar();
+    if (yaActualizo) {
+        std::cout << "Ya utilizaste la unica actualizacion permitida de fotos de perfil.\n";
+    } else if (cantidadMejores == 0) {
+        std::cout << "Aun no tienes amigos para mostrar.\n";
+    } else {
+        int anteriores[3];
+        int cuantosAnteriores = cantidadMejores;
+        for (int i = 0; i < 3; i++) {
+            Medidor::contarDirecta();
+            anteriores[i] = mejoresAmigos[i];
+        }
+        cantidadMejores = red.elegirMejoresAmigos(usuarioActual, mejoresAmigos, anteriores, cuantosAnteriores);
+        yaActualizo = true;
+        Medidor::sumarLocales(sizeof(int) * 5);
+        std::cout << "\n";
+        mostrarMejoresAmigos();
+    }
+    mostrarMetricas();
 }
 
 void Consola::menuPrincipal() {
     bool seguir = true;
-    while (seguir) {
-        std::cout << "\n===== Menu principal (" << red.getUsuario(usuarioActual).getNombre() << ") =====\n";
-        std::cout << "1. Administrar amistades\n";
-        std::cout << "2. Visitar perfil de un amigo\n";
-        std::cout << "3. Ver sugerencias de amistad\n";
-        std::cout << "4. Administrar mensajes\n";
-        std::cout << "0. Cerrar sesion\n";
-        int opcion = leerEntero("Opcion: ", 0, 4);
-        if (opcion == 1) {
+    while (seguir && !entradaCerrada) {
+        std::cout << "\nMenu de opciones:\n\n";
+        std::cout << "1.- Administrar amistades\n";
+        std::cout << "2.- Visitar perfil de un amigo\n";
+        std::cout << "3.- Ver sugerencias de amistad\n";
+        std::cout << "4.- Administrar mensajes\n\n";
+        if (!yaActualizo && cantidadMejores > 0) {
+            std::cout << ".- Ingrese 'N' o 'n' para alternar el grupo de fotos de perfil de amigos.\n";
+        }
+        std::cout << ".- Ingrese 'S' o 's' para cerrar su sesion.\n\n";
+        std::string entrada = leerLinea("Su opcion: ");
+        if (entradaCerrada || Cadena::iguales(entrada, "S") || Cadena::iguales(entrada, "s")
+            || Cadena::iguales(entrada, "0")) {
+            seguir = false;
+        } else if (Cadena::iguales(entrada, "N") || Cadena::iguales(entrada, "n")) {
+            alternarMejoresAmigos();
+        } else if (Cadena::iguales(entrada, "1")) {
             menuAmistades();
-        } else if (opcion == 2) {
+        } else if (Cadena::iguales(entrada, "2")) {
             visitarPerfil();
-        } else if (opcion == 3) {
+        } else if (Cadena::iguales(entrada, "3")) {
             verSugerencias();
-        } else if (opcion == 4) {
+        } else if (Cadena::iguales(entrada, "4")) {
             menuMensajes();
         } else {
-            seguir = false;
+            std::cout << "Opcion no valida.\n";
         }
     }
 }
@@ -383,7 +399,7 @@ void Consola::verSugerencias() {
         }
         int opcion = leerEntero("Numero al que enviar solicitud (0 para ninguno): ", 0, cantidad);
         if (opcion > 0) {
-            int codigo = red.enviarSolicitud(usuarioActual, red.getUsuario(ids[opcion - 1]).getNombre());
+            int codigo = red.enviarSolicitud(usuarioActual, ids[opcion - 1]);
             mostrarResultadoSolicitud(codigo);
         }
     }
