@@ -34,6 +34,7 @@ bool Cadena::esVacio(const std::string& texto) {
 }
 
 unsigned long Cadena::hash(const std::string& texto) {
+    // Algoritmo DJB2 para calcular el hash del nombre caracter por caracter
     unsigned long h = 5381;
     int n = (int)texto.size();
     for (int i = 0; i < n; i++) {
@@ -44,6 +45,7 @@ unsigned long Cadena::hash(const std::string& texto) {
 }
 
 int Cadena::dividirEnteros(const std::string& texto, char separador, int* valores, int maximo) {
+    // Separa y convierte numeros enteros manualmente sin usar metodos de busqueda de string
     int cuantos = 0;
     int actual = 0;
     bool hayDigitos = false;
@@ -91,7 +93,6 @@ bool Cadena::aEntero(const std::string& texto, int& valor) {
 }
 
 unsigned long long Cadena::bytesDinamicos(const std::string& texto) {
-
     if (texto.size() <= 15) {
         return 0;
     }
