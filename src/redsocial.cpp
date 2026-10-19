@@ -2,13 +2,13 @@
 #include "cadena.h"
 
 RedSocial::RedSocial()
-    : usuarios(), mensajes(), indice(), fechaActual(18, 10, 2026), rutaBase(""),
+    : usuarios(), mensajes(), indice(), fechaActual(18, 10, 2026), rutaBase(""), enviosSesion(0),
       generador(std::random_device()()) {
 }
 
 RedSocial::RedSocial(const RedSocial& otra)
     : usuarios(), mensajes(), indice(otra.indice), fechaActual(otra.fechaActual),
-      rutaBase(otra.rutaBase), generador(otra.generador) {
+      rutaBase(otra.rutaBase), enviosSesion(otra.enviosSesion), generador(otra.generador) {
     copiarDe(otra);
 }
 
@@ -22,6 +22,7 @@ RedSocial& RedSocial::operator=(const RedSocial& otra) {
         indice = otra.indice;
         fechaActual = otra.fechaActual;
         rutaBase = otra.rutaBase;
+        enviosSesion = otra.enviosSesion;
         generador = otra.generador;
         copiarDe(otra);
     }
@@ -257,5 +258,126 @@ bool RedSocial::aceptarSolicitud(int idUsuario, int posicion) {
     usuarios[emisor]->quitarSolicitudEnviada(idUsuario);
     yo.agregarAmigo(emisor);
     usuarios[emisor]->agregarAmigo(idUsuario);
+    return true;
+}
+
+int RedSocial::sugerirAmigos(int idUsuario, int k, int* ids, int* comunes) const {
+    int total = usuarios.tamano();
+    const Usuario& yo = *usuarios[idUsuario];
+    int* contador = new int[total];
+    for (int i = 0; i < total; i++) {
+        contador[i] = 0;
+    }
+
+    contador[idUsuario] = -1;
+    for (int i = 0; i < yo.getAmigos().tamano(); i++) {
+        contador[yo.getAmigos()[i]] = -1;
+    }
+    for (int i = 0; i < yo.getSolicitudesRecibidas().tamano(); i++) {
+        contador[yo.getSolicitudesRecibidas()[i]] = -1;
+    }
+    for (int i = 0; i < yo.getSolicitudesEnviadas().tamano(); i++) {
+        contador[yo.getSolicitudesEnviadas()[i]] = -1;
+    }
+
+    Lista<int> candidatos;
+    for (int i = 0; i < yo.getAmigos().tamano(); i++) {
+        const Lista<int>& amigosDelAmigo = usuarios[yo.getAmigos()[i]]->getAmigos();
+        for (int j = 0; j < amigosDelAmigo.tamano(); j++) {
+            int candidato = amigosDelAmigo[j];
+            if (contador[candidato] >= 0) {
+                if (contador[candidato] == 0) {
+                    candidatos.agregar(candidato);
+                }
+                contador[candidato]++;
+            }
+        }
+    }
+
+    int cantidad = 0;
+    for (int i = 0; i < candidatos.tamano(); i++) {
+        int candidato = candidatos[i];
+        int cant = contador[candidato];
+        int pos = cantidad;
+        while (pos > 0 && comunes[pos - 1] < cant) {
+            pos--;
+        }
+        if (pos < k) {
+            int fin = (cantidad < k) ? cantidad : k - 1;
+            for (int q = fin; q > pos; q--) {
+                comunes[q] = comunes[q - 1];
+                ids[q] = ids[q - 1];
+            }
+            comunes[pos] = cant;
+            ids[pos] = candidato;
+            if (cantidad < k) {
+                cantidad++;
+            }
+        }
+    }
+
+    delete[] contador;
+    return cantidad;
+}
+
+int RedSocial::enviarMensaje(int idEmisor, const std::string& nombreDestino, const std::string& texto) {
+    int destino = buscarUsuario(nombreDestino);
+    if (destino == -1) {
+        return MSG_NO_EXISTE;
+    }
+    if (!usuarios[idEmisor]->esAmigo(destino)) {
+        return MSG_NO_AMIGO;
+    }
+    if (Cadena::esVacio(texto)) {
+        return MSG_VACIO;
+    }
+    if ((int)texto.size() > Mensaje::LIMITE_TEXTO) {
+        return MSG_MUY_LARGO;
+    }
+
+    Fecha ahora = fechaActual;
+    ahora.setHora(8 + (enviosSesion / 60) % 16);
+    ahora.setMinuto(enviosSesion % 60);
+    enviosSesion++;
+    if (mensajes.tamano() > 0) {
+        const Fecha& ultima = mensajes[mensajes.tamano() - 1]->getFecha();
+        if (ahora < ultima) {
+            ahora = ultima;
+        }
+    }
+
+    agregarMensaje(new Mensaje(idEmisor, destino, ahora, false, texto));
+    return MSG_OK;
+}
+
+void RedSocial::recopilarNoLeidos(int idUsuario, Lista<int>& salida) const {
+    const Lista<int>& recibidos = usuarios[idUsuario]->getMensajesRecibidos();
+    for (int i = 0; i < recibidos.tamano(); i++) {
+        if (!mensajes[recibidos[i]]->estaLeido()) {
+            salida.agregar(recibidos[i]);
+        }
+    }
+}
+
+void RedSocial::marcarLeidos(const Lista<int>& ids) {
+    for (int i = 0; i < ids.tamano(); i++) {
+        mensajes[ids[i]]->marcarLeido();
+    }
+}
+
+// Version inicial: recorrido lineal sobre todos los mensajes recibidos
+bool RedSocial::buscarPorRango(int idUsuario, const Fecha& inicio, const Fecha& fin, Lista<int>& salida) const {
+    if (inicio.claveDia() > fin.claveDia()) {
+        return false;
+    }
+    const Lista<int>& recibidos = usuarios[idUsuario]->getMensajesRecibidos();
+    int dInicio = inicio.claveDia();
+    int dFin = fin.claveDia();
+    for (int i = 0; i < recibidos.tamano(); i++) {
+        int d = mensajes[recibidos[i]]->getFecha().claveDia();
+        if (d >= dInicio && d <= dFin) {
+            salida.agregar(recibidos[i]);
+        }
+    }
     return true;
 }
