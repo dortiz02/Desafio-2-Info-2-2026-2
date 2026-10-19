@@ -1,4 +1,5 @@
 #include "mensaje.h"
+#include "cadena.h"
 
 Mensaje::Mensaje() : idEmisor(-1), idReceptor(-1), fecha(), leido(false), texto("") {
 }
@@ -33,6 +34,14 @@ void Mensaje::setTexto(const std::string& t) { texto = t; }
 
 void Mensaje::marcarLeido() {
     leido = true;
+}
+
+unsigned long long Mensaje::memoriaDinamica() const {
+    return Cadena::bytesDinamicos(texto);
+}
+
+unsigned long long Mensaje::bytesTotales() const {
+    return sizeof(Mensaje) + memoriaDinamica();
 }
 
 bool Mensaje::operator<(const Mensaje& otro) const {
