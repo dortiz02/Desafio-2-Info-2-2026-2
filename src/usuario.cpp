@@ -154,6 +154,27 @@ Album* Usuario::getAlbum(int pos) const {
     return albumes[pos];
 }
 
+unsigned long long Usuario::memoriaDinamica() const {
+    unsigned long long total = 0;
+    total += Cadena::bytesDinamicos(nombre) + Cadena::bytesDinamicos(correo);
+    total += Cadena::bytesDinamicos(rutaFotoPerfil) + Cadena::bytesDinamicos(clave);
+    total += Cadena::bytesDinamicos(ciudad) + Cadena::bytesDinamicos(pais);
+    total += amigos.memoriaDinamica();
+    total += solicitudesRecibidas.memoriaDinamica();
+    total += solicitudesEnviadas.memoriaDinamica();
+    total += mensajesRecibidos.memoriaDinamica();
+    total += mensajesEnviados.memoriaDinamica();
+    total += albumes.memoriaDinamica();
+    for (int i = 0; i < albumes.tamano(); i++) {
+        total += albumes[i]->bytesTotales();
+    }
+    return total;
+}
+
+unsigned long long Usuario::bytesTotales() const {
+    return sizeof(Usuario) + memoriaDinamica();
+}
+
 bool Usuario::operator==(const Usuario& otro) const {
     return Cadena::iguales(nombre, otro.nombre);
 }
