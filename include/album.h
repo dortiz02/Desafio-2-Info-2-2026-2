@@ -40,6 +40,9 @@ public:
 
     bool esVisibleParaAmigos() const;
 
+    unsigned long long memoriaDinamica() const;
+    unsigned long long bytesTotales() const;
+
     friend std::ostream& operator<<(std::ostream& salida, const Album& a);
 };
 
