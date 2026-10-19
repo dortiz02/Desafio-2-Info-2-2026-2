@@ -11,7 +11,6 @@ Almacenamiento::Almacenamiento() {
 Almacenamiento::Almacenamiento(const Almacenamiento&) {
 }
 
-// ---------------- escritura ----------------
 
 void Almacenamiento::escribirEntero(std::ofstream& archivo, int valor) {
     archivo.write(reinterpret_cast<const char*>(&valor), sizeof(int));
@@ -31,7 +30,6 @@ void Almacenamiento::escribirFecha(std::ofstream& archivo, const Fecha& fecha) {
     escribirEntero(archivo, fecha.getMinuto());
 }
 
-// ---------------- lectura ----------------
 
 bool Almacenamiento::leerEntero(std::ifstream& archivo, int& valor) {
     archivo.read(reinterpret_cast<char*>(&valor), sizeof(int));
@@ -67,8 +65,6 @@ bool Almacenamiento::leerFecha(std::ifstream& archivo, Fecha& fecha) {
     return fecha.esValida();
 }
 
-// ---------------- guardar ----------------
-
 bool Almacenamiento::guardar(const RedSocial& red, const std::string& ruta) {
     std::ofstream archivo(ruta, std::ios::binary);
     if (!archivo.is_open()) {
@@ -77,15 +73,15 @@ bool Almacenamiento::guardar(const RedSocial& red, const std::string& ruta) {
 
     int totalUsuarios = red.cantidadUsuarios();
 
-    // 1. cabecera
     archivo.write("UDEB", 4);
     escribirEntero(archivo, 1);
     escribirFecha(archivo, red.getFechaActual());
     escribirTexto(archivo, red.getRutaBase());
 
-    // 2. usuarios
+
     escribirEntero(archivo, totalUsuarios);
     for (int i = 0; i < totalUsuarios; i++) {
+        Medidor::contarDirecta();
         const Usuario& u = red.getUsuario(i);
         escribirTexto(archivo, u.getNombre());
         escribirFecha(archivo, u.getFechaNacimiento());
@@ -97,12 +93,12 @@ bool Almacenamiento::guardar(const RedSocial& red, const std::string& ruta) {
         escribirFecha(archivo, u.getFechaInscripcion());
     }
 
-    // 3. amistades: cada pareja (a,b) se guarda una sola vez con a < b
     int aristas = 0;
     for (int i = 0; i < totalUsuarios; i++) {
         const Lista<int>& amigos = red.getUsuario(i).getAmigos();
         for (int j = 0; j < amigos.tamano(); j++) {
-                if (amigos[j] > i) {
+            Medidor::contarDirecta();
+            if (amigos[j] > i) {
                 aristas++;
             }
         }
@@ -111,44 +107,49 @@ bool Almacenamiento::guardar(const RedSocial& red, const std::string& ruta) {
     for (int i = 0; i < totalUsuarios; i++) {
         const Lista<int>& amigos = red.getUsuario(i).getAmigos();
         for (int j = 0; j < amigos.tamano(); j++) {
-                if (amigos[j] > i) {
+            Medidor::contarDirecta();
+            if (amigos[j] > i) {
                 escribirEntero(archivo, i);
                 escribirEntero(archivo, amigos[j]);
             }
         }
     }
 
-    // 4. solicitudes pendientes (quien envia, quien recibe)
+
     int solicitudes = 0;
     for (int i = 0; i < totalUsuarios; i++) {
+        Medidor::contarDirecta();
         solicitudes += red.getUsuario(i).getSolicitudesEnviadas().tamano();
     }
     escribirEntero(archivo, solicitudes);
     for (int i = 0; i < totalUsuarios; i++) {
         const Lista<int>& enviadas = red.getUsuario(i).getSolicitudesEnviadas();
         for (int j = 0; j < enviadas.tamano(); j++) {
-                escribirEntero(archivo, i);
+            Medidor::contarDirecta();
+            escribirEntero(archivo, i);
             escribirEntero(archivo, enviadas[j]);
         }
     }
 
-    // 5. albumes con sus fotos
     int albumes = 0;
     for (int i = 0; i < totalUsuarios; i++) {
+        Medidor::contarDirecta();
         albumes += red.getUsuario(i).cantidadAlbumes();
     }
     escribirEntero(archivo, albumes);
     for (int i = 0; i < totalUsuarios; i++) {
         const Usuario& u = red.getUsuario(i);
         for (int j = 0; j < u.cantidadAlbumes(); j++) {
-                const Album* a = u.getAlbum(j);
+            Medidor::contarDirecta();
+            const Album* a = u.getAlbum(j);
             escribirEntero(archivo, i);
             escribirTexto(archivo, a->getNombre());
             escribirTexto(archivo, a->getRuta());
             escribirEntero(archivo, (int)a->getPrivacidad());
             escribirEntero(archivo, a->cantidadFotos());
             for (int k = 0; k < a->cantidadFotos(); k++) {
-                        const Foto& f = a->getFoto(k);
+                Medidor::contarDirecta();
+                const Foto& f = a->getFoto(k);
                 escribirFecha(archivo, f.getFechaCaptura());
                 escribirEntero(archivo, f.getTamanoKB());
                 escribirTexto(archivo, f.getRuta());
@@ -157,9 +158,10 @@ bool Almacenamiento::guardar(const RedSocial& red, const std::string& ruta) {
         }
     }
 
-    // 6. mensajes (en orden de fecha)
+
     escribirEntero(archivo, red.cantidadMensajes());
     for (int i = 0; i < red.cantidadMensajes(); i++) {
+        Medidor::contarDirecta();
         const Mensaje& m = red.getMensaje(i);
         escribirEntero(archivo, m.getIdEmisor());
         escribirEntero(archivo, m.getIdReceptor());
@@ -168,11 +170,10 @@ bool Almacenamiento::guardar(const RedSocial& red, const std::string& ruta) {
         escribirTexto(archivo, m.getTexto());
     }
 
+    Medidor::sumarLocales(sizeof(int) * 10 + sizeof(void*) * 4);
     archivo.close();
     return true;
 }
-
-// ---------------- cargar ----------------
 
 bool Almacenamiento::cargar(RedSocial& red, const std::string& ruta) {
     std::ifstream archivo(ruta, std::ios::binary);
@@ -180,7 +181,7 @@ bool Almacenamiento::cargar(RedSocial& red, const std::string& ruta) {
         return false;
     }
 
-    // 1. cabecera
+
     char magia[4];
     archivo.read(magia, 4);
     if (!archivo || magia[0] != 'U' || magia[1] != 'D' || magia[2] != 'E' || magia[3] != 'B') {
@@ -198,12 +199,13 @@ bool Almacenamiento::cargar(RedSocial& red, const std::string& ruta) {
     red.setFechaActual(fechaActual);
     red.setRutaBase(rutaBase);
 
-    // 2. usuarios
+
     int totalUsuarios = 0;
     if (!leerEntero(archivo, totalUsuarios) || totalUsuarios < 0 || totalUsuarios > 1000000) {
         return false;
     }
     for (int i = 0; i < totalUsuarios; i++) {
+        Medidor::contarDirecta();
         std::string nombre, correo, rutaFoto, clave, ciudad, pais;
         Fecha nacimiento, inscripcion;
         if (!leerTexto(archivo, nombre) || !leerFecha(archivo, nacimiento)
@@ -216,12 +218,13 @@ bool Almacenamiento::cargar(RedSocial& red, const std::string& ruta) {
     }
     red.construirIndice();
 
-    // 3. amistades
+
     int aristas = 0;
     if (!leerEntero(archivo, aristas) || aristas < 0) {
         return false;
     }
     for (int i = 0; i < aristas; i++) {
+        Medidor::contarDirecta();
         int a, b;
         if (!leerEntero(archivo, a) || !leerEntero(archivo, b)) {
             return false;
@@ -232,12 +235,12 @@ bool Almacenamiento::cargar(RedSocial& red, const std::string& ruta) {
         red.crearAmistad(a, b);
     }
 
-    // 4. solicitudes
     int solicitudes = 0;
     if (!leerEntero(archivo, solicitudes) || solicitudes < 0) {
         return false;
     }
     for (int i = 0; i < solicitudes; i++) {
+        Medidor::contarDirecta();
         int de, para;
         if (!leerEntero(archivo, de) || !leerEntero(archivo, para)) {
             return false;
@@ -248,12 +251,12 @@ bool Almacenamiento::cargar(RedSocial& red, const std::string& ruta) {
         red.registrarSolicitud(de, para);
     }
 
-    // 5. albumes
     int albumes = 0;
     if (!leerEntero(archivo, albumes) || albumes < 0) {
         return false;
     }
     for (int i = 0; i < albumes; i++) {
+        Medidor::contarDirecta();
         int duenio, privacidad, fotos;
         std::string nombre, rutaAlbum;
         if (!leerEntero(archivo, duenio) || !leerTexto(archivo, nombre) || !leerTexto(archivo, rutaAlbum)
@@ -267,7 +270,8 @@ bool Almacenamiento::cargar(RedSocial& red, const std::string& ruta) {
         red.getUsuario(duenio).agregarAlbum(album);
         album->reservarFotos(fotos);
         for (int j = 0; j < fotos; j++) {
-                Fecha captura;
+            Medidor::contarDirecta();
+            Fecha captura;
             int tamano, likes;
             std::string rutaFoto;
             if (!leerFecha(archivo, captura) || !leerEntero(archivo, tamano)
@@ -278,12 +282,12 @@ bool Almacenamiento::cargar(RedSocial& red, const std::string& ruta) {
         }
     }
 
-    // 6. mensajes
     int totalMensajes = 0;
     if (!leerEntero(archivo, totalMensajes) || totalMensajes < 0) {
         return false;
     }
     for (int i = 0; i < totalMensajes; i++) {
+        Medidor::contarDirecta();
         int emisor, receptor, leido;
         Fecha fecha;
         std::string texto;
@@ -297,6 +301,7 @@ bool Almacenamiento::cargar(RedSocial& red, const std::string& ruta) {
         red.agregarMensaje(new Mensaje(emisor, receptor, fecha, leido == 1, texto));
     }
 
+    Medidor::sumarLocales(sizeof(int) * 12 + sizeof(Fecha) * 5 + sizeof(std::string) * 8 + sizeof(void*) * 3);
     archivo.close();
     return true;
 }
