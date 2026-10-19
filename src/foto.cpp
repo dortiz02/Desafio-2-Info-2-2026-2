@@ -41,6 +41,10 @@ void Foto::quitarLike() {
     }
 }
 
+unsigned long long Foto::memoriaDinamica() const {
+    return Cadena::bytesDinamicos(ruta);
+}
+
 bool Foto::operator==(const Foto& otra) const {
     return Cadena::iguales(ruta, otra.ruta);
 }
