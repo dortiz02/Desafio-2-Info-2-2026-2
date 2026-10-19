@@ -1,0 +1,79 @@
+FORMATO DEL ARCHIVO data/ude_datos.dat  (Ude@Book)
+====================================================
+
+Archivo binario propio. Un solo archivo guarda toda la red social.
+Se lee completo al iniciar el programa y se reescribe completo al salir;
+durante la ejecucion todo se maneja en memoria.
+
+Tipos usados (se asume int de 4 bytes y orden de bytes del equipo, little endian):
+  ENTERO : int de 4 bytes.
+  TEXTO  : ENTERO largo, seguido de "largo" caracteres (sin '\0' final).
+  FECHA  : 5 ENTEROS en este orden: dia, mes, añoww, hora, minuto.
+
+Estructura (en este orden):
+
+1. CABECERA
+   - 4 bytes: caracteres 'U' 'D' 'E' 'B' (marca del formato)
+   - ENTERO : version (actualmente 1)
+   - FECHA  : fecha actual de la plataforma (se usa como fecha de los mensajes nuevos)
+   - TEXTO  : sub-ruta fija de las rutas de fotos (ej: "storage2026")
+
+2. USUARIOS
+   - ENTERO : cantidad de usuarios N
+   - N veces (el id del usuario es su posicion, de 0 a N-1):
+       TEXTO nombre de usuario (unico)
+       FECHA fecha de nacimiento
+       TEXTO correo
+       TEXTO ruta de la foto de perfil
+       TEXTO contrasena
+       TEXTO ciudad
+       TEXTO pais
+       FECHA fecha de inscripcion
+
+3. AMISTADES
+   - ENTERO : cantidad de parejas A
+   - A veces: ENTERO idA, ENTERO idB   (siempre idA < idB, cada amistad se guarda una sola vez)
+
+4. SOLICITUDES DE AMISTAD PENDIENTES
+   - ENTERO : cantidad S
+   - S veces: ENTERO idEmisor, ENTERO idReceptor
+
+5. ALBUMES
+   - ENTERO : cantidad de albumes B
+   - B veces:
+       ENTERO idDueno
+       TEXTO  nombre del album
+       TEXTO  ruta del album
+       ENTERO privacidad (0 = publico, 1 = amigos, 2 = privado)
+       ENTERO cantidad de fotos F
+       F veces:
+           FECHA  fecha de captura
+           ENTERO tamano en KB
+           TEXTO  ruta del archivo .png
+           ENTERO cantidad de likes
+
+6. MENSAJES (ordenados de mas antiguo a mas reciente)
+   - ENTERO : cantidad de mensajes M
+   - M veces:
+       ENTERO idEmisor
+       ENTERO idReceptor
+       FECHA  fecha de envio
+       ENTERO leido (0 = no leido, 1 = leido)
+       TEXTO  contenido (maximo 512 caracteres)
+
+Decisiones de diseño
+--------------------
+- La amistad es simetrica, por eso cada pareja se guarda una sola vez y al
+  cargar se agrega en la lista de los dos usuarios.
+- Las solicitudes pendientes se guardan una sola vez (emisor, receptor); al
+  cargar se llenan la lista de enviadas del emisor y la de recibidas del receptor.
+- Los mensajes se guardan una sola vez; cada usuario solo guarda el indice.
+- Como los mensajes estan ordenados por fecha en el archivo, las listas de
+  mensajes de cada usuario quedan ordenadas sin tener que ordenar al cargar.
+
+Datos de prueba
+---------------
+Se generan con data/generador_datos.cpp (1200 usuarios, ~17000 amistades,
+15000 mensajes entre el 16/08/2026 y el 17/10/2026, 400 solicitudes pendientes).
+Usuario de prueba: ana0 / clave0  (amigo de luis1, maria2 y carlos3, que tienen
+2 albumes de 5 fotos cada uno).
