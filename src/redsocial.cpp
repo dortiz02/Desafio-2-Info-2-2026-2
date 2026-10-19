@@ -1,5 +1,6 @@
 #include "redsocial.h"
 #include "cadena.h"
+#include "medidor.h"
 
 RedSocial::RedSocial()
     : usuarios(), mensajes(), indice(), fechaActual(18, 10, 2026), rutaBase(""), enviosSesion(0),
@@ -119,7 +120,6 @@ bool RedSocial::sonAmigos(int a, int b) const {
     return usuarios[a]->esAmigo(b);
 }
 
-// Mejorado: recorrido con dos punteros sobre las listas ordenadas O(da + db)
 int RedSocial::amigosEnComun(int a, int b) const {
     const Lista<int>& la = usuarios[a]->getAmigos();
     const Lista<int>& lb = usuarios[b]->getAmigos();
@@ -127,6 +127,7 @@ int RedSocial::amigosEnComun(int a, int b) const {
     int j = 0;
     int comunes = 0;
     while (i < la.tamano() && j < lb.tamano()) {
+        Medidor::contarIndirecta();
         if (la[i] == lb[j]) {
             comunes++;
             i++;
@@ -147,11 +148,12 @@ int RedSocial::elegirMejoresAmigos(int idUsuario, int* resultado, const int* exc
         return 0;
     }
 
-    double* base = new double[n];
-    double* actual = new double[n];
+    double* base = new double[n];       // peso original de cada amigo
+    double* actual = new double[n];     // peso con el que participa en el sorteo
     bool* elegido = new bool[n];
 
     for (int i = 0; i < n; i++) {
+        Medidor::contarDirecta();
         int comunes = amigosEnComun(idUsuario, amigos[i]);
         double peso = 1.0;
         if (comunes > 20) {
@@ -164,6 +166,7 @@ int RedSocial::elegirMejoresAmigos(int idUsuario, int* resultado, const int* exc
 
         bool excluido = false;
         for (int j = 0; j < cantExcluidos; j++) {
+            Medidor::contarDirecta();
             if (excluidos[j] == amigos[i]) {
                 excluido = true;
             }
@@ -176,17 +179,21 @@ int RedSocial::elegirMejoresAmigos(int idUsuario, int* resultado, const int* exc
     bool restaurado = false;
 
     while (cuantos < maximo) {
+        Medidor::contarDirecta();
         double total = 0.0;
         for (int i = 0; i < n; i++) {
+            Medidor::contarDirecta();
             total += actual[i];
         }
 
         if (total <= 0.0) {
+            // ya no quedan amigos nuevos, se devuelven los excluidos al sorteo
             if (restaurado) {
                 break;
             }
             restaurado = true;
             for (int i = 0; i < n; i++) {
+                Medidor::contarDirecta();
                 if (!elegido[i]) {
                     actual[i] = base[i];
                 }
@@ -196,10 +203,12 @@ int RedSocial::elegirMejoresAmigos(int idUsuario, int* resultado, const int* exc
 
         std::uniform_real_distribution<double> distribucion(0.0, total);
         double r = distribucion(generador);
+        Medidor::contarExterna();
 
         double acumulado = 0.0;
         int posElegida = -1;
         for (int i = 0; i < n && posElegida == -1; i++) {
+            Medidor::contarDirecta();
             if (actual[i] > 0.0) {
                 acumulado += actual[i];
                 if (r < acumulado) {
@@ -208,7 +217,9 @@ int RedSocial::elegirMejoresAmigos(int idUsuario, int* resultado, const int* exc
             }
         }
         if (posElegida == -1) {
+            // por redondeo puede no entrar: se toma el ultimo con peso
             for (int i = n - 1; i >= 0 && posElegida == -1; i--) {
+                Medidor::contarDirecta();
                 if (actual[i] > 0.0) {
                     posElegida = i;
                 }
@@ -221,6 +232,9 @@ int RedSocial::elegirMejoresAmigos(int idUsuario, int* resultado, const int* exc
         elegido[posElegida] = true;
     }
 
+    Medidor::sumarLocales(sizeof(int) * 7 + sizeof(double) * 3 + sizeof(bool) * 2
+                          + sizeof(void*) * 6 + (sizeof(double) * 2 + sizeof(bool)) * n);
+
     delete[] base;
     delete[] actual;
     delete[] elegido;
@@ -229,6 +243,7 @@ int RedSocial::elegirMejoresAmigos(int idUsuario, int* resultado, const int* exc
 
 int RedSocial::enviarSolicitud(int idUsuario, const std::string& nombreDestino) {
     int destino = buscarUsuario(nombreDestino);
+    Medidor::sumarLocales(sizeof(int) * 2 + sizeof(void*));
     if (destino == -1) {
         return SOL_NO_EXISTE;
     }
@@ -258,6 +273,7 @@ bool RedSocial::aceptarSolicitud(int idUsuario, int posicion) {
     usuarios[emisor]->quitarSolicitudEnviada(idUsuario);
     yo.agregarAmigo(emisor);
     usuarios[emisor]->agregarAmigo(idUsuario);
+    Medidor::sumarLocales(sizeof(int) * 3 + sizeof(void*));
     return true;
 }
 
@@ -266,24 +282,31 @@ int RedSocial::sugerirAmigos(int idUsuario, int k, int* ids, int* comunes) const
     const Usuario& yo = *usuarios[idUsuario];
     int* contador = new int[total];
     for (int i = 0; i < total; i++) {
+        Medidor::contarDirecta();
         contador[i] = 0;
     }
 
+    // -1 marca a quienes NO se pueden sugerir (yo, amigos, solicitudes pendientes)
     contador[idUsuario] = -1;
     for (int i = 0; i < yo.getAmigos().tamano(); i++) {
+        Medidor::contarDirecta();
         contador[yo.getAmigos()[i]] = -1;
     }
     for (int i = 0; i < yo.getSolicitudesRecibidas().tamano(); i++) {
+        Medidor::contarDirecta();
         contador[yo.getSolicitudesRecibidas()[i]] = -1;
     }
     for (int i = 0; i < yo.getSolicitudesEnviadas().tamano(); i++) {
+        Medidor::contarDirecta();
         contador[yo.getSolicitudesEnviadas()[i]] = -1;
     }
 
     Lista<int> candidatos;
     for (int i = 0; i < yo.getAmigos().tamano(); i++) {
+        Medidor::contarDirecta();
         const Lista<int>& amigosDelAmigo = usuarios[yo.getAmigos()[i]]->getAmigos();
         for (int j = 0; j < amigosDelAmigo.tamano(); j++) {
+            Medidor::contarDirecta();
             int candidato = amigosDelAmigo[j];
             if (contador[candidato] >= 0) {
                 if (contador[candidato] == 0) {
@@ -296,15 +319,18 @@ int RedSocial::sugerirAmigos(int idUsuario, int k, int* ids, int* comunes) const
 
     int cantidad = 0;
     for (int i = 0; i < candidatos.tamano(); i++) {
+        Medidor::contarDirecta();
         int candidato = candidatos[i];
         int cant = contador[candidato];
         int pos = cantidad;
         while (pos > 0 && comunes[pos - 1] < cant) {
+            Medidor::contarDirecta();
             pos--;
         }
         if (pos < k) {
             int fin = (cantidad < k) ? cantidad : k - 1;
             for (int q = fin; q > pos; q--) {
+                Medidor::contarDirecta();
                 comunes[q] = comunes[q - 1];
                 ids[q] = ids[q - 1];
             }
@@ -316,12 +342,15 @@ int RedSocial::sugerirAmigos(int idUsuario, int k, int* ids, int* comunes) const
         }
     }
 
+    Medidor::sumarLocales(sizeof(int) * 11 + sizeof(void*) * 4 + sizeof(Lista<int>)
+                          + (unsigned long long)total * sizeof(int) + candidatos.memoriaDinamica());
     delete[] contador;
     return cantidad;
 }
 
 int RedSocial::enviarMensaje(int idEmisor, const std::string& nombreDestino, const std::string& texto) {
     int destino = buscarUsuario(nombreDestino);
+    Medidor::sumarLocales(sizeof(int) * 3 + sizeof(void*) + sizeof(Fecha));
     if (destino == -1) {
         return MSG_NO_EXISTE;
     }
@@ -334,7 +363,6 @@ int RedSocial::enviarMensaje(int idEmisor, const std::string& nombreDestino, con
     if ((int)texto.size() > Mensaje::LIMITE_TEXTO) {
         return MSG_MUY_LARGO;
     }
-
     Fecha ahora = fechaActual;
     ahora.setHora(8 + (enviosSesion / 60) % 16);
     ahora.setMinuto(enviosSesion % 60);
@@ -353,31 +381,66 @@ int RedSocial::enviarMensaje(int idEmisor, const std::string& nombreDestino, con
 void RedSocial::recopilarNoLeidos(int idUsuario, Lista<int>& salida) const {
     const Lista<int>& recibidos = usuarios[idUsuario]->getMensajesRecibidos();
     for (int i = 0; i < recibidos.tamano(); i++) {
+        Medidor::contarDirecta();
         if (!mensajes[recibidos[i]]->estaLeido()) {
             salida.agregar(recibidos[i]);
         }
     }
+    Medidor::sumarLocales(sizeof(int) + sizeof(void*) * 2);
 }
 
 void RedSocial::marcarLeidos(const Lista<int>& ids) {
     for (int i = 0; i < ids.tamano(); i++) {
+        Medidor::contarDirecta();
         mensajes[ids[i]]->marcarLeido();
     }
+    Medidor::sumarLocales(sizeof(int) + sizeof(void*));
 }
 
-// Version inicial: recorrido lineal sobre todos los mensajes recibidos
+
+int RedSocial::posicionLimite(const Lista<int>& ids, int claveDia, bool estricto) const {
+    int inicio = 0;
+    int fin = ids.tamano();
+    while (inicio < fin) {
+        Medidor::contarIndirecta();
+        int medio = (inicio + fin) / 2;
+        int claveMedio = mensajes[ids[medio]]->getFecha().claveDia();
+        if (claveMedio < claveDia || (estricto && claveMedio == claveDia)) {
+            inicio = medio + 1;
+        } else {
+            fin = medio;
+        }
+    }
+    return inicio;
+}
+
+
 bool RedSocial::buscarPorRango(int idUsuario, const Fecha& inicio, const Fecha& fin, Lista<int>& salida) const {
     if (inicio.claveDia() > fin.claveDia()) {
         return false;
     }
     const Lista<int>& recibidos = usuarios[idUsuario]->getMensajesRecibidos();
-    int dInicio = inicio.claveDia();
-    int dFin = fin.claveDia();
-    for (int i = 0; i < recibidos.tamano(); i++) {
-        int d = mensajes[recibidos[i]]->getFecha().claveDia();
-        if (d >= dInicio && d <= dFin) {
-            salida.agregar(recibidos[i]);
-        }
+    int desde = posicionLimite(recibidos, inicio.claveDia(), false);
+    int hasta = posicionLimite(recibidos, fin.claveDia(), true);
+    for (int i = desde; i < hasta; i++) {
+        Medidor::contarDirecta();
+        salida.agregar(recibidos[i]);
     }
+    Medidor::sumarLocales(sizeof(int) * 3 + sizeof(void*) * 2);
     return true;
+}
+
+unsigned long long RedSocial::memoriaTotal() const {
+    unsigned long long total = sizeof(RedSocial);
+    total += Cadena::bytesDinamicos(rutaBase);
+    total += indice.memoriaDinamica();
+    total += usuarios.memoriaDinamica();
+    for (int i = 0; i < usuarios.tamano(); i++) {
+        total += usuarios[i]->bytesTotales();
+    }
+    total += mensajes.memoriaDinamica();
+    for (int i = 0; i < mensajes.tamano(); i++) {
+        total += mensajes[i]->bytesTotales();
+    }
+    return total;
 }
