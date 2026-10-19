@@ -30,6 +30,9 @@ public:
     void darLike();
     void quitarLike();
 
+    // bytes dinamicos que usa la foto (el texto de la ruta)
+    unsigned long long memoriaDinamica() const;
+
     bool operator==(const Foto& otra) const;
     friend std::ostream& operator<<(std::ostream& salida, const Foto& f);
 };
