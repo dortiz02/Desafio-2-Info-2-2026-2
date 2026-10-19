@@ -1,6 +1,8 @@
 #ifndef LISTA_H
 #define LISTA_H
 
+#include "medidor.h"
+
 template <class T>
 class Lista {
 private:
@@ -15,6 +17,7 @@ private:
         }
         T* nuevo = new T[nuevaCapacidad];
         for (int i = 0; i < cantidad; i++) {
+            Medidor::contarIndirecta();
             nuevo[i] = datos[i];
         }
         delete[] datos;
@@ -30,6 +33,7 @@ public:
         if (capacidad > 0) {
             datos = new T[capacidad];
             for (int i = 0; i < cantidad; i++) {
+                Medidor::contarIndirecta();
                 datos[i] = otra.datos[i];
             }
         }
@@ -48,6 +52,7 @@ public:
             if (capacidad > 0) {
                 datos = new T[capacidad];
                 for (int i = 0; i < cantidad; i++) {
+                    Medidor::contarIndirecta();
                     datos[i] = otra.datos[i];
                 }
             }
@@ -69,13 +74,13 @@ public:
         cantidad++;
     }
 
-    // Inserta manteniendo el orden ascendente
     void insertarOrdenado(const T& valor) {
         if (cantidad == capacidad) {
             crecer(cantidad + 1);
         }
         int pos = cantidad;
         while (pos > 0 && datos[pos - 1] > valor) {
+            Medidor::contarIndirecta();
             datos[pos] = datos[pos - 1];
             pos--;
         }
@@ -88,6 +93,7 @@ public:
             return;
         }
         for (int i = pos; i < cantidad - 1; i++) {
+            Medidor::contarIndirecta();
             datos[i] = datos[i + 1];
         }
         cantidad--;
@@ -96,6 +102,7 @@ public:
     // Busqueda lineal, devuelve la posicion o -1
     int buscar(const T& valor) const {
         for (int i = 0; i < cantidad; i++) {
+            Medidor::contarIndirecta();
             if (datos[i] == valor) {
                 return i;
             }
@@ -108,6 +115,7 @@ public:
         int inicio = 0;
         int fin = cantidad - 1;
         while (inicio <= fin) {
+            Medidor::contarIndirecta();
             int medio = (inicio + fin) / 2;
             if (datos[medio] == valor) {
                 return medio;
@@ -139,6 +147,11 @@ public:
 
     bool vacia() const {
         return cantidad == 0;
+    }
+
+    // Bytes reservados en el heap por esta lista (sin contar lo que apunten los elementos)
+    unsigned long long memoriaDinamica() const {
+        return (unsigned long long)capacidad * sizeof(T);
     }
 };
 
