@@ -11,6 +11,7 @@ private:
     int cantidad;
 
     void crecer(int minimo) {
+        // Duplicamos la capacidad actual para redimensionar el arreglo dinamico
         int nuevaCapacidad = (capacidad == 0) ? 4 : capacidad * 2;
         if (nuevaCapacidad < minimo) {
             nuevaCapacidad = minimo;
@@ -78,6 +79,7 @@ public:
         if (cantidad == capacidad) {
             crecer(cantidad + 1);
         }
+        // Desplazamos los elementos mayores hacia la derecha para mantener el orden ascendente
         int pos = cantidad;
         while (pos > 0 && datos[pos - 1] > valor) {
             Medidor::contarIndirecta();
@@ -99,7 +101,6 @@ public:
         cantidad--;
     }
 
-    // Busqueda lineal, devuelve la posicion o -1
     int buscar(const T& valor) const {
         for (int i = 0; i < cantidad; i++) {
             Medidor::contarIndirecta();
@@ -110,8 +111,8 @@ public:
         return -1;
     }
 
-    // Busqueda binaria, solo sirve si la lista esta ordenada
     int buscarBinaria(const T& valor) const {
+        // Busqueda binaria O(log n) sobre el arreglo ordenado
         int inicio = 0;
         int fin = cantidad - 1;
         while (inicio <= fin) {
@@ -149,7 +150,6 @@ public:
         return cantidad == 0;
     }
 
-    // Bytes reservados en el heap por esta lista (sin contar lo que apunten los elementos)
     unsigned long long memoriaDinamica() const {
         return (unsigned long long)capacidad * sizeof(T);
     }
