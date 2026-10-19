@@ -74,6 +74,9 @@ bool Consola::leerFecha(const std::string& mensaje, Fecha& fecha) {
 }
 
 void Consola::mostrarMetricas() const {
+    // el programa tambien incluye lo que ocupa la propia consola
+    unsigned long long extra = sizeof(Consola) - sizeof(RedSocial);
+    Medidor::mostrar(red.memoriaTotal() + extra);
 }
 
 void Consola::mostrarMensaje(const Mensaje& m) {
@@ -103,6 +106,9 @@ void Consola::mostrarResultadoSolicitud(int codigo) {
 
 void Consola::ejecutar(const std::string& ruta) {
     rutaDatos = ruta;
+
+
+    Medidor::reiniciar();
     if (!Almacenamiento::cargar(red, rutaDatos)) {
         std::cout << "No se pudo cargar el archivo de datos: " << rutaDatos << "\n";
         return;
@@ -110,6 +116,7 @@ void Consola::ejecutar(const std::string& ruta) {
     std::cout << "=== Ude@Book ===\n";
     std::cout << "Datos cargados: " << red.cantidadUsuarios() << " usuarios, "
               << red.cantidadMensajes() << " mensajes.\n";
+    mostrarMetricas();
 
     bool seguir = true;
     while (seguir) {
@@ -119,10 +126,13 @@ void Consola::ejecutar(const std::string& ruta) {
             seguir = false;
         } else {
             std::string clave = leerLinea("Contrasena: ");
-                    int id = red.autenticar(nombre, clave);
-                    if (id == -1) {
+            Medidor::reiniciar();
+            int id = red.autenticar(nombre, clave);
+            Medidor::sumarLocales(sizeof(int) + sizeof(std::string) * 2);
+            if (id == -1) {
                 std::cout << "Usuario o contrasena incorrectos.\n";
-                        } else {
+                mostrarMetricas();
+            } else {
                 usuarioActual = id;
                 iniciarSesion();
                 menuPrincipal();
@@ -131,13 +141,16 @@ void Consola::ejecutar(const std::string& ruta) {
         }
     }
 
-    // Se guardan los cambios (amistades, solicitudes, mensajes, likes)
+ 
+    Medidor::reiniciar();
     if (Almacenamiento::guardar(red, rutaDatos)) {
         std::cout << "\nCambios guardados en " << rutaDatos << "\n";
     } else {
         std::cout << "\nNo se pudieron guardar los cambios.\n";
     }
+    mostrarMetricas();
 }
+
 
 void Consola::iniciarSesion() {
     const Usuario& yo = red.getUsuario(usuarioActual);
@@ -157,9 +170,12 @@ void Consola::iniciarSesion() {
             }
             cantidadMejores = red.elegirMejoresAmigos(usuarioActual, mejoresAmigos, anteriores, cuantosAnteriores);
             yaActualizo = true;
+            Medidor::sumarLocales(sizeof(int) * 5);
             mostrarMejoresAmigos();
         }
     }
+    Medidor::sumarLocales(sizeof(int) * 2 + sizeof(void*));
+    mostrarMetricas();
 }
 
 void Consola::mostrarMejoresAmigos() {
@@ -169,6 +185,7 @@ void Consola::mostrarMejoresAmigos() {
     }
     std::cout << "\nFotos de perfil de tus amigos:\n";
     for (int i = 0; i < cantidadMejores; i++) {
+        Medidor::contarDirecta();
         const Usuario& amigo = red.getUsuario(mejoresAmigos[i]);
         std::cout << "  " << (i + 1) << ". " << amigo.getNombre() << " -> " << amigo.getRutaFotoPerfil()
                   << " (" << red.amigosEnComun(usuarioActual, mejoresAmigos[i]) << " amigos en comun)\n";
@@ -219,13 +236,18 @@ void Consola::menuAmistades() {
 
 void Consola::enviarSolicitud() {
     std::string destino = leerLinea("Nombre de usuario al que enviar la solicitud: ");
+    Medidor::reiniciar();
     int codigo = red.enviarSolicitud(usuarioActual, destino);
+    Medidor::sumarLocales(sizeof(int) + sizeof(std::string));
     mostrarResultadoSolicitud(codigo);
+    mostrarMetricas();
 }
 
 void Consola::aceptarSolicitudes() {
+    Medidor::reiniciar();
     bool seguir = true;
     while (seguir) {
+        Medidor::contarDirecta();
         const Lista<int>& pendientes = red.getUsuario(usuarioActual).getSolicitudesRecibidas();
         if (pendientes.tamano() == 0) {
             std::cout << "No tienes solicitudes pendientes.\n";
@@ -233,7 +255,8 @@ void Consola::aceptarSolicitudes() {
         } else {
             std::cout << "\nSolicitudes recibidas:\n";
             for (int i = 0; i < pendientes.tamano(); i++) {
-                        std::cout << "  " << (i + 1) << ". " << red.getUsuario(pendientes[i]) << "\n";
+                Medidor::contarDirecta();
+                std::cout << "  " << (i + 1) << ". " << red.getUsuario(pendientes[i]) << "\n";
             }
             int opcion = leerEntero("Numero de la solicitud a aceptar (0 para volver): ", 0, pendientes.tamano());
             if (opcion == 0) {
@@ -245,10 +268,13 @@ void Consola::aceptarSolicitudes() {
             }
         }
     }
+    Medidor::sumarLocales(sizeof(int) * 3 + sizeof(bool) + sizeof(void*) + sizeof(std::string));
+    mostrarMetricas();
 }
 
 void Consola::visitarPerfil() {
     std::string nombre = leerLinea("Nombre de usuario del amigo: ");
+    Medidor::reiniciar();
     int idAmigo = red.buscarUsuario(nombre);
 
     if (idAmigo == -1) {
@@ -260,13 +286,15 @@ void Consola::visitarPerfil() {
         std::cout << "\nPerfil de " << amigo << "\n";
         bool seguir = true;
         while (seguir) {
-                int total = amigo.cantidadAlbumes();
+            Medidor::contarDirecta();
+            int total = amigo.cantidadAlbumes();
             int* visibles = new int[total > 0 ? total : 1];
             int cantidadVisibles = 0;
 
             std::cout << "\nAlbumes disponibles:\n";
             for (int i = 0; i < total; i++) {
-                        if (amigo.getAlbum(i)->esVisibleParaAmigos()) {
+                Medidor::contarDirecta();
+                if (amigo.getAlbum(i)->esVisibleParaAmigos()) {
                     visibles[cantidadVisibles] = i;
                     cantidadVisibles++;
                     std::cout << "  " << cantidadVisibles << ". " << *amigo.getAlbum(i) << "\n";
@@ -284,11 +312,13 @@ void Consola::visitarPerfil() {
                     recorrerAlbum(*amigo.getAlbum(visibles[opcion - 1]));
                 }
             }
+            Medidor::sumarLocales(sizeof(int) * 5 + sizeof(void*));
             delete[] visibles;
         }
     }
+    Medidor::sumarLocales(sizeof(int) + sizeof(std::string) + sizeof(void*));
+    mostrarMetricas();
 }
-
 
 void Consola::recorrerAlbum(Album& album) {
     int total = album.cantidadFotos();
@@ -297,8 +327,10 @@ void Consola::recorrerAlbum(Album& album) {
         return;
     }
 
+
     bool* leDiLike = new bool[total];
     for (int i = 0; i < total; i++) {
+        Medidor::contarDirecta();
         leDiLike[i] = false;
     }
 
@@ -306,6 +338,7 @@ void Consola::recorrerAlbum(Album& album) {
     int posicion = 0;
     bool seguir = true;
     while (seguir) {
+        Medidor::contarDirecta();
         std::cout << "\nFoto " << (posicion + 1) << " de " << total << ": " << album.getFoto(posicion) << "\n";
         std::cout << "1. Siguiente\n2. Previa\n3. Dar/quitar like\n0. Salir del album\n";
         int opcion = leerEntero("Opcion: ", 0, 3);
@@ -327,11 +360,13 @@ void Consola::recorrerAlbum(Album& album) {
             seguir = false;
         }
     }
+    Medidor::sumarLocales(sizeof(int) * 4 + sizeof(bool) + sizeof(void*) + (unsigned long long)total * sizeof(bool));
     delete[] leDiLike;
 }
 
 void Consola::verSugerencias() {
     int k = leerEntero("Cuantas sugerencias desea ver (1 a 20): ", 1, 20);
+    Medidor::reiniciar();
 
     int* ids = new int[k];
     int* comunes = new int[k];
@@ -342,7 +377,8 @@ void Consola::verSugerencias() {
     } else {
         std::cout << "\nSugerencias de amistad:\n";
         for (int i = 0; i < cantidad; i++) {
-                std::cout << "  " << (i + 1) << ". " << red.getUsuario(ids[i]).getNombre()
+            Medidor::contarDirecta();
+            std::cout << "  " << (i + 1) << ". " << red.getUsuario(ids[i]).getNombre()
                       << " - " << comunes[i] << " amigos en comun\n";
         }
         int opcion = leerEntero("Numero al que enviar solicitud (0 para ninguno): ", 0, cantidad);
@@ -351,8 +387,10 @@ void Consola::verSugerencias() {
             mostrarResultadoSolicitud(codigo);
         }
     }
+    Medidor::sumarLocales(sizeof(int) * 5 + sizeof(void*) * 2 + (unsigned long long)k * sizeof(int) * 2);
     delete[] ids;
     delete[] comunes;
+    mostrarMetricas();
 }
 
 void Consola::menuMensajes() {
@@ -379,7 +417,9 @@ void Consola::menuMensajes() {
 void Consola::enviarMensaje() {
     std::string destino = leerLinea("Nombre del amigo: ");
     std::string texto = leerLinea("Mensaje (maximo 512 caracteres): ");
+    Medidor::reiniciar();
     int codigo = red.enviarMensaje(usuarioActual, destino, texto);
+    Medidor::sumarLocales(sizeof(int) + sizeof(std::string) * 2);
 
     if (codigo == RedSocial::MSG_OK) {
         std::cout << "Mensaje enviado.\n";
@@ -392,9 +432,11 @@ void Consola::enviarMensaje() {
     } else {
         std::cout << "El mensaje supera los 512 caracteres.\n";
     }
+    mostrarMetricas();
 }
 
 void Consola::leerMensajesNuevos() {
+    Medidor::reiniciar();
     Lista<int> nuevos;
     red.recopilarNoLeidos(usuarioActual, nuevos);
 
@@ -403,11 +445,14 @@ void Consola::leerMensajesNuevos() {
     } else {
         std::cout << "\nMensajes nuevos (" << nuevos.tamano() << "):\n";
         for (int i = 0; i < nuevos.tamano(); i++) {
-                mostrarMensaje(red.getMensaje(nuevos[i]));
+            Medidor::contarDirecta();
+            mostrarMensaje(red.getMensaje(nuevos[i]));
         }
         red.marcarLeidos(nuevos);
         std::cout << "Los mensajes quedaron marcados como leidos.\n";
     }
+    Medidor::sumarLocales(sizeof(Lista<int>) + nuevos.memoriaDinamica() + sizeof(int));
+    mostrarMetricas();
 }
 
 void Consola::buscarMensajesPorFecha() {
@@ -420,6 +465,7 @@ void Consola::buscarMensajesPorFecha() {
         return;
     }
 
+    Medidor::reiniciar();
     Lista<int> encontrados;
     if (!red.buscarPorRango(usuarioActual, inicio, fin, encontrados)) {
         std::cout << "La fecha de inicio no puede ser posterior a la de fin.\n";
@@ -430,7 +476,10 @@ void Consola::buscarMensajesPorFecha() {
                   << inicio.getAnio() << " y " << fin.getDia() << "/" << fin.getMes() << "/"
                   << fin.getAnio() << ": " << encontrados.tamano() << "\n";
         for (int i = 0; i < encontrados.tamano(); i++) {
-                mostrarMensaje(red.getMensaje(encontrados[i]));
+            Medidor::contarDirecta();
+            mostrarMensaje(red.getMensaje(encontrados[i]));
         }
     }
+    Medidor::sumarLocales(sizeof(Fecha) * 2 + sizeof(Lista<int>) + encontrados.memoriaDinamica() + sizeof(int));
+    mostrarMetricas();
 }
