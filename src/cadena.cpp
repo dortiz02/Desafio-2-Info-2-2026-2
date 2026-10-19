@@ -1,4 +1,5 @@
 #include "cadena.h"
+#include "medidor.h"
 
 Cadena::Cadena() {
 }
@@ -12,6 +13,7 @@ bool Cadena::iguales(const std::string& a, const std::string& b) {
         return false;
     }
     for (int i = 0; i < n; i++) {
+        Medidor::contarIndirecta();
         if (a[i] != b[i]) {
             return false;
         }
@@ -22,6 +24,7 @@ bool Cadena::iguales(const std::string& a, const std::string& b) {
 bool Cadena::esVacio(const std::string& texto) {
     int n = (int)texto.size();
     for (int i = 0; i < n; i++) {
+        Medidor::contarIndirecta();
         char c = texto[i];
         if (c != ' ' && c != '\t' && c != '\r' && c != '\n') {
             return false;
@@ -34,6 +37,7 @@ unsigned long Cadena::hash(const std::string& texto) {
     unsigned long h = 5381;
     int n = (int)texto.size();
     for (int i = 0; i < n; i++) {
+        Medidor::contarIndirecta();
         h = h * 33 + (unsigned char)texto[i];
     }
     return h;
@@ -46,6 +50,7 @@ int Cadena::dividirEnteros(const std::string& texto, char separador, int* valore
     int n = (int)texto.size();
 
     for (int i = 0; i < n; i++) {
+        Medidor::contarIndirecta();
         char c = texto[i];
         if (c >= '0' && c <= '9') {
             actual = actual * 10 + (c - '0');
@@ -62,7 +67,6 @@ int Cadena::dividirEnteros(const std::string& texto, char separador, int* valore
             actual = 0;
             hayDigitos = false;
         } else if (c == ' ' || c == '\r') {
-            // ignorar espacios
         } else {
             return -1;
         }
@@ -84,4 +88,12 @@ bool Cadena::aEntero(const std::string& texto, int& valor) {
     }
     valor = numeros[0];
     return true;
+}
+
+unsigned long long Cadena::bytesDinamicos(const std::string& texto) {
+
+    if (texto.size() <= 15) {
+        return 0;
+    }
+    return (unsigned long long)texto.capacity() + 1;
 }
