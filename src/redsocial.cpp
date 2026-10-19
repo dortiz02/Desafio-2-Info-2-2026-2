@@ -52,6 +52,7 @@ void RedSocial::copiarDe(const RedSocial& otra) {
     }
 }
 
+
 int RedSocial::agregarUsuario(Usuario* usuario) {
     usuarios.agregar(usuario);
     return usuarios.tamano() - 1;
@@ -100,6 +101,7 @@ const Fecha& RedSocial::getFechaActual() const { return fechaActual; }
 void RedSocial::setFechaActual(const Fecha& f) { fechaActual = f; }
 const std::string& RedSocial::getRutaBase() const { return rutaBase; }
 void RedSocial::setRutaBase(const std::string& r) { rutaBase = r; }
+
 
 int RedSocial::buscarUsuario(const std::string& nombre) const {
     return indice.buscar(nombre, usuarios);
@@ -241,26 +243,31 @@ int RedSocial::elegirMejoresAmigos(int idUsuario, int* resultado, const int* exc
     return cuantos;
 }
 
-int RedSocial::enviarSolicitud(int idUsuario, const std::string& nombreDestino) {
-    int destino = buscarUsuario(nombreDestino);
+int RedSocial::enviarSolicitud(int idUsuario, int idDestino) {
     Medidor::sumarLocales(sizeof(int) * 2 + sizeof(void*));
-    if (destino == -1) {
+    if (idDestino < 0 || idDestino >= usuarios.tamano()) {
         return SOL_NO_EXISTE;
     }
-    if (destino == idUsuario) {
+    if (idDestino == idUsuario) {
         return SOL_MISMO_USUARIO;
     }
-    if (usuarios[idUsuario]->esAmigo(destino)) {
+    if (usuarios[idUsuario]->esAmigo(idDestino)) {
         return SOL_YA_AMIGOS;
     }
-    if (usuarios[idUsuario]->tieneSolicitudEnviadaA(destino)) {
+    if (usuarios[idUsuario]->tieneSolicitudEnviadaA(idDestino)) {
         return SOL_YA_ENVIADA;
     }
-    if (usuarios[idUsuario]->tieneSolicitudRecibidaDe(destino)) {
+    if (usuarios[idUsuario]->tieneSolicitudRecibidaDe(idDestino)) {
         return SOL_YA_RECIBIDA;
     }
-    registrarSolicitud(idUsuario, destino);
+    registrarSolicitud(idUsuario, idDestino);
     return SOL_OK;
+}
+
+int RedSocial::enviarSolicitud(int idUsuario, const std::string& nombreDestino) {
+    int destino = buscarUsuario(nombreDestino);
+    Medidor::sumarLocales(sizeof(int));
+    return enviarSolicitud(idUsuario, destino);
 }
 
 bool RedSocial::aceptarSolicitud(int idUsuario, int posicion) {
@@ -286,7 +293,6 @@ int RedSocial::sugerirAmigos(int idUsuario, int k, int* ids, int* comunes) const
         contador[i] = 0;
     }
 
-    // -1 marca a quienes NO se pueden sugerir (yo, amigos, solicitudes pendientes)
     contador[idUsuario] = -1;
     for (int i = 0; i < yo.getAmigos().tamano(); i++) {
         Medidor::contarDirecta();
@@ -397,7 +403,6 @@ void RedSocial::marcarLeidos(const Lista<int>& ids) {
     Medidor::sumarLocales(sizeof(int) + sizeof(void*));
 }
 
-
 int RedSocial::posicionLimite(const Lista<int>& ids, int claveDia, bool estricto) const {
     int inicio = 0;
     int fin = ids.tamano();
@@ -413,7 +418,6 @@ int RedSocial::posicionLimite(const Lista<int>& ids, int claveDia, bool estricto
     }
     return inicio;
 }
-
 
 bool RedSocial::buscarPorRango(int idUsuario, const Fecha& inicio, const Fecha& fin, Lista<int>& salida) const {
     if (inicio.claveDia() > fin.claveDia()) {
