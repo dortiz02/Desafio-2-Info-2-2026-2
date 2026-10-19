@@ -7,7 +7,7 @@
 
 class IndiceUsuarios {
 private:
-    int* tabla;
+    int* tabla;        
     int capacidad;
     int cantidad;
 
@@ -21,6 +21,8 @@ public:
 
     void construir(const Lista<Usuario*>& usuarios);
     int buscar(const std::string& nombre, const Lista<Usuario*>& usuarios) const;
+
+    unsigned long long memoriaDinamica() const;
 };
 
 #endif
