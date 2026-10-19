@@ -1,6 +1,7 @@
 #include "consola.h"
 #include "almacenamiento.h"
 #include "cadena.h"
+#include "medidor.h"
 #include "lista.h"
 #include <iostream>
 
@@ -35,6 +36,7 @@ Consola& Consola::operator=(const Consola& otra) {
     return *this;
 }
 
+
 std::string Consola::leerLinea(const std::string& mensaje) {
     std::cout << mensaje;
     std::string linea;
@@ -59,6 +61,32 @@ int Consola::leerEntero(const std::string& mensaje, int minimo, int maximo) {
     }
 }
 
+bool Consola::leerFecha(const std::string& mensaje, Fecha& fecha) {
+    while (true) {
+        std::string linea = leerLinea(mensaje + " (dd/mm/aaaa, 0 para cancelar): ");
+        if (entradaCerrada || Cadena::iguales(linea, "0")) {
+            return false;
+        }
+        if (Fecha::desdeTexto(linea, fecha)) {
+            return true;
+        }
+        std::cout << "Fecha no valida.\n";
+    }
+}
+
+
+void Consola::mostrarMetricas() const {
+}
+
+void Consola::mostrarMensaje(const Mensaje& m) {
+    const Usuario& emisor = red.getUsuario(m.getIdEmisor());
+    std::cout << m.getFecha() << " | De: " << emisor.getNombre() << " | " << m.getTexto();
+    if (!m.estaLeido()) {
+        std::cout << "  (no leido)";
+    }
+    std::cout << "\n";
+}
+
 void Consola::mostrarResultadoSolicitud(int codigo) {
     if (codigo == RedSocial::SOL_OK) {
         std::cout << "Solicitud de amistad enviada.\n";
@@ -75,8 +103,11 @@ void Consola::mostrarResultadoSolicitud(int codigo) {
     }
 }
 
+
 void Consola::ejecutar(const std::string& ruta) {
     rutaDatos = ruta;
+
+
     if (!Almacenamiento::cargar(red, rutaDatos)) {
         std::cout << "No se pudo cargar el archivo de datos: " << rutaDatos << "\n";
         return;
@@ -93,10 +124,10 @@ void Consola::ejecutar(const std::string& ruta) {
             seguir = false;
         } else {
             std::string clave = leerLinea("Contrasena: ");
-            int id = red.autenticar(nombre, clave);
-            if (id == -1) {
+                    int id = red.autenticar(nombre, clave);
+                    if (id == -1) {
                 std::cout << "Usuario o contrasena incorrectos.\n";
-            } else {
+                        } else {
                 usuarioActual = id;
                 iniciarSesion();
                 menuPrincipal();
@@ -105,10 +136,14 @@ void Consola::ejecutar(const std::string& ruta) {
         }
     }
 
+    // Se guardan los cambios (amistades, solicitudes, mensajes, likes)
     if (Almacenamiento::guardar(red, rutaDatos)) {
         std::cout << "\nCambios guardados en " << rutaDatos << "\n";
+    } else {
+        std::cout << "\nNo se pudieron guardar los cambios.\n";
     }
 }
+
 
 void Consola::iniciarSesion() {
     const Usuario& yo = red.getUsuario(usuarioActual);
@@ -151,15 +186,25 @@ void Consola::menuPrincipal() {
     while (seguir) {
         std::cout << "\n===== Menu principal (" << red.getUsuario(usuarioActual).getNombre() << ") =====\n";
         std::cout << "1. Administrar amistades\n";
+        std::cout << "2. Visitar perfil de un amigo\n";
+        std::cout << "3. Ver sugerencias de amistad\n";
+        std::cout << "4. Administrar mensajes\n";
         std::cout << "0. Cerrar sesion\n";
-        int opcion = leerEntero("Opcion: ", 0, 1);
+        int opcion = leerEntero("Opcion: ", 0, 4);
         if (opcion == 1) {
             menuAmistades();
+        } else if (opcion == 2) {
+            visitarPerfil();
+        } else if (opcion == 3) {
+            verSugerencias();
+        } else if (opcion == 4) {
+            menuMensajes();
         } else {
             seguir = false;
         }
     }
 }
+
 
 void Consola::menuAmistades() {
     bool seguir = true;
@@ -195,7 +240,7 @@ void Consola::aceptarSolicitudes() {
         } else {
             std::cout << "\nSolicitudes recibidas:\n";
             for (int i = 0; i < pendientes.tamano(); i++) {
-                std::cout << "  " << (i + 1) << ". " << red.getUsuario(pendientes[i]) << "\n";
+                        std::cout << "  " << (i + 1) << ". " << red.getUsuario(pendientes[i]) << "\n";
             }
             int opcion = leerEntero("Numero de la solicitud a aceptar (0 para volver): ", 0, pendientes.tamano());
             if (opcion == 0) {
@@ -205,6 +250,195 @@ void Consola::aceptarSolicitudes() {
                 red.aceptarSolicitud(usuarioActual, opcion - 1);
                 std::cout << "Ahora eres amigo de " << nuevoAmigo << ".\n";
             }
+        }
+    }
+}
+
+
+void Consola::visitarPerfil() {
+    std::string nombre = leerLinea("Nombre de usuario del amigo: ");
+    int idAmigo = red.buscarUsuario(nombre);
+
+    if (idAmigo == -1) {
+        std::cout << "Ese usuario no existe.\n";
+    } else if (!red.sonAmigos(usuarioActual, idAmigo)) {
+        std::cout << "Solo puedes visitar perfiles de tus amigos.\n";
+    } else {
+        Usuario& amigo = red.getUsuario(idAmigo);
+        std::cout << "\nPerfil de " << amigo << "\n";
+        bool seguir = true;
+        while (seguir) {
+                int total = amigo.cantidadAlbumes();
+            int* visibles = new int[total > 0 ? total : 1];
+            int cantidadVisibles = 0;
+
+            std::cout << "\nAlbumes disponibles:\n";
+            for (int i = 0; i < total; i++) {
+                        if (amigo.getAlbum(i)->esVisibleParaAmigos()) {
+                    visibles[cantidadVisibles] = i;
+                    cantidadVisibles++;
+                    std::cout << "  " << cantidadVisibles << ". " << *amigo.getAlbum(i) << "\n";
+                }
+            }
+
+            if (cantidadVisibles == 0) {
+                std::cout << "  (no tiene albumes visibles)\n";
+                seguir = false;
+            } else {
+                int opcion = leerEntero("Elija un album (0 para volver): ", 0, cantidadVisibles);
+                if (opcion == 0) {
+                    seguir = false;
+                } else {
+                    recorrerAlbum(*amigo.getAlbum(visibles[opcion - 1]));
+                }
+            }
+            delete[] visibles;
+        }
+    }
+}
+
+void Consola::recorrerAlbum(Album& album) {
+    int total = album.cantidadFotos();
+    if (total == 0) {
+        std::cout << "El album esta vacio.\n";
+        return;
+    }
+
+    bool* leDiLike = new bool[total];
+    for (int i = 0; i < total; i++) {
+        leDiLike[i] = false;
+    }
+
+    std::cout << "\nAlbum: " << album.getNombre() << "\n";
+    int posicion = 0;
+    bool seguir = true;
+    while (seguir) {
+        std::cout << "\nFoto " << (posicion + 1) << " de " << total << ": " << album.getFoto(posicion) << "\n";
+        std::cout << "1. Siguiente\n2. Previa\n3. Dar/quitar like\n0. Salir del album\n";
+        int opcion = leerEntero("Opcion: ", 0, 3);
+        if (opcion == 1) {
+            posicion = (posicion + 1) % total;
+        } else if (opcion == 2) {
+            posicion = (posicion - 1) % total;
+        } else if (opcion == 3) {
+            if (leDiLike[posicion]) {
+                album.getFoto(posicion).quitarLike();
+                leDiLike[posicion] = false;
+                std::cout << "Quitaste tu like.\n";
+            } else {
+                album.getFoto(posicion).darLike();
+                leDiLike[posicion] = true;
+                std::cout << "Diste like.\n";
+            }
+        } else {
+            seguir = false;
+        }
+    }
+    delete[] leDiLike;
+}
+
+void Consola::verSugerencias() {
+    int k = leerEntero("Cuantas sugerencias desea ver (1 a 20): ", 1, 20);
+
+    int* ids = new int[k];
+    int* comunes = new int[k];
+    int cantidad = red.sugerirAmigos(usuarioActual, k, ids, comunes);
+
+    if (cantidad == 0) {
+        std::cout << "No hay sugerencias disponibles por ahora.\n";
+    } else {
+        std::cout << "\nSugerencias de amistad:\n";
+        for (int i = 0; i < cantidad; i++) {
+                std::cout << "  " << (i + 1) << ". " << red.getUsuario(ids[i]).getNombre()
+                      << " - " << comunes[i] << " amigos en comun\n";
+        }
+        int opcion = leerEntero("Numero al que enviar solicitud (0 para ninguno): ", 0, cantidad);
+        if (opcion > 0) {
+            int codigo = red.enviarSolicitud(usuarioActual, red.getUsuario(ids[opcion - 1]).getNombre());
+            mostrarResultadoSolicitud(codigo);
+        }
+    }
+    delete[] ids;
+    delete[] comunes;
+}
+
+
+void Consola::menuMensajes() {
+    bool seguir = true;
+    while (seguir) {
+        std::cout << "\n--- Administrar mensajes ---\n";
+        std::cout << "1. Enviar mensaje\n";
+        std::cout << "2. Leer mensajes nuevos\n";
+        std::cout << "3. Buscar mensajes por rango de fecha\n";
+        std::cout << "0. Volver\n";
+        int opcion = leerEntero("Opcion: ", 0, 3);
+        if (opcion == 1) {
+            enviarMensaje();
+        } else if (opcion == 2) {
+            leerMensajesNuevos();
+        } else if (opcion == 3) {
+            buscarMensajesPorFecha();
+        } else {
+            seguir = false;
+        }
+    }
+}
+
+void Consola::enviarMensaje() {
+    std::string destino = leerLinea("Nombre del amigo: ");
+    std::string texto = leerLinea("Mensaje (maximo 512 caracteres): ");
+    int codigo = red.enviarMensaje(usuarioActual, destino, texto);
+
+    if (codigo == RedSocial::MSG_OK) {
+        std::cout << "Mensaje enviado.\n";
+    } else if (codigo == RedSocial::MSG_NO_EXISTE) {
+        std::cout << "Ese usuario no existe.\n";
+    } else if (codigo == RedSocial::MSG_NO_AMIGO) {
+        std::cout << "Solo puedes enviar mensajes a tus amigos.\n";
+    } else if (codigo == RedSocial::MSG_VACIO) {
+        std::cout << "No se puede enviar un mensaje vacio.\n";
+    } else {
+        std::cout << "El mensaje supera los 512 caracteres.\n";
+    }
+}
+
+void Consola::leerMensajesNuevos() {
+    Lista<int> nuevos;
+    red.recopilarNoLeidos(usuarioActual, nuevos);
+
+    if (nuevos.tamano() == 0) {
+        std::cout << "No tienes mensajes nuevos.\n";
+    } else {
+        std::cout << "\nMensajes nuevos (" << nuevos.tamano() << "):\n";
+        for (int i = 0; i < nuevos.tamano(); i++) {
+                mostrarMensaje(red.getMensaje(nuevos[i]));
+        }
+        red.marcarLeidos(nuevos);
+        std::cout << "Los mensajes quedaron marcados como leidos.\n";
+    }
+}
+
+void Consola::buscarMensajesPorFecha() {
+    Fecha inicio;
+    Fecha fin;
+    if (!leerFecha("Fecha de inicio", inicio)) {
+        return;
+    }
+    if (!leerFecha("Fecha de fin", fin)) {
+        return;
+    }
+
+    Lista<int> encontrados;
+    if (!red.buscarPorRango(usuarioActual, inicio, fin, encontrados)) {
+        std::cout << "La fecha de inicio no puede ser posterior a la de fin.\n";
+    } else if (encontrados.tamano() == 0) {
+        std::cout << "No hay mensajes recibidos en ese rango.\n";
+    } else {
+        std::cout << "\nMensajes recibidos entre " << inicio.getDia() << "/" << inicio.getMes() << "/"
+                  << inicio.getAnio() << " y " << fin.getDia() << "/" << fin.getMes() << "/"
+                  << fin.getAnio() << ": " << encontrados.tamano() << "\n";
+        for (int i = 0; i < encontrados.tamano(); i++) {
+                mostrarMensaje(red.getMensaje(encontrados[i]));
         }
     }
 }
