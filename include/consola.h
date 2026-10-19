@@ -3,6 +3,9 @@
 
 #include <string>
 #include "redsocial.h"
+#include "album.h"
+#include "mensaje.h"
+#include "fecha.h"
 
 class Consola {
 private:
@@ -16,8 +19,11 @@ private:
 
     std::string leerLinea(const std::string& mensaje);
     int leerEntero(const std::string& mensaje, int minimo, int maximo);
+    bool leerFecha(const std::string& mensaje, Fecha& fecha);
 
+    void mostrarMetricas() const;
     void mostrarMejoresAmigos();
+    void mostrarMensaje(const Mensaje& m);
     void mostrarResultadoSolicitud(int codigo);
 
     void iniciarSesion();
@@ -25,6 +31,13 @@ private:
     void menuAmistades();
     void enviarSolicitud();
     void aceptarSolicitudes();
+    void visitarPerfil();
+    void recorrerAlbum(Album& album);
+    void verSugerencias();
+    void menuMensajes();
+    void enviarMensaje();
+    void leerMensajesNuevos();
+    void buscarMensajesPorFecha();
 
 public:
     Consola();
