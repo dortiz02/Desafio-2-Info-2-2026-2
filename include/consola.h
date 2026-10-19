@@ -23,6 +23,7 @@ private:
 
     void mostrarMetricas() const;
     void mostrarMejoresAmigos();
+    void alternarMejoresAmigos();
     void mostrarMensaje(const Mensaje& m);
     void mostrarResultadoSolicitud(int codigo);
 
