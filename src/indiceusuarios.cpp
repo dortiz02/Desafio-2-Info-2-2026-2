@@ -38,6 +38,7 @@ IndiceUsuarios& IndiceUsuarios::operator=(const IndiceUsuarios& otro) {
 }
 
 void IndiceUsuarios::insertar(int id, const Lista<Usuario*>& usuarios) {
+    // Tabla hash con sondeo lineal para resolver colisiones
     int pos = (int)(Cadena::hash(usuarios[id]->getNombre()) % (unsigned long)capacidad);
     while (tabla[pos] != -1) {
         Medidor::contarIndirecta();
@@ -66,6 +67,7 @@ int IndiceUsuarios::buscar(const std::string& nombre, const Lista<Usuario*>& usu
     if (capacidad == 0) {
         return -1;
     }
+    // Buscamos desde la posicion hash avanzando linealmente hasta hallar el nombre o una celda vacia (-1)
     int pos = (int)(Cadena::hash(nombre) % (unsigned long)capacidad);
     while (tabla[pos] != -1) {
         Medidor::contarIndirecta();
