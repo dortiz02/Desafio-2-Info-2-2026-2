@@ -36,7 +36,6 @@ Consola& Consola::operator=(const Consola& otra) {
     return *this;
 }
 
-
 std::string Consola::leerLinea(const std::string& mensaje) {
     std::cout << mensaje;
     std::string linea;
@@ -74,7 +73,6 @@ bool Consola::leerFecha(const std::string& mensaje, Fecha& fecha) {
     }
 }
 
-
 void Consola::mostrarMetricas() const {
 }
 
@@ -103,11 +101,8 @@ void Consola::mostrarResultadoSolicitud(int codigo) {
     }
 }
 
-
 void Consola::ejecutar(const std::string& ruta) {
     rutaDatos = ruta;
-
-
     if (!Almacenamiento::cargar(red, rutaDatos)) {
         std::cout << "No se pudo cargar el archivo de datos: " << rutaDatos << "\n";
         return;
@@ -143,7 +138,6 @@ void Consola::ejecutar(const std::string& ruta) {
         std::cout << "\nNo se pudieron guardar los cambios.\n";
     }
 }
-
 
 void Consola::iniciarSesion() {
     const Usuario& yo = red.getUsuario(usuarioActual);
@@ -205,7 +199,6 @@ void Consola::menuPrincipal() {
     }
 }
 
-
 void Consola::menuAmistades() {
     bool seguir = true;
     while (seguir) {
@@ -254,7 +247,6 @@ void Consola::aceptarSolicitudes() {
     }
 }
 
-
 void Consola::visitarPerfil() {
     std::string nombre = leerLinea("Nombre de usuario del amigo: ");
     int idAmigo = red.buscarUsuario(nombre);
@@ -297,6 +289,7 @@ void Consola::visitarPerfil() {
     }
 }
 
+
 void Consola::recorrerAlbum(Album& album) {
     int total = album.cantidadFotos();
     if (total == 0) {
@@ -319,7 +312,7 @@ void Consola::recorrerAlbum(Album& album) {
         if (opcion == 1) {
             posicion = (posicion + 1) % total;
         } else if (opcion == 2) {
-            posicion = (posicion - 1) % total;
+            posicion = (posicion - 1 + total) % total;
         } else if (opcion == 3) {
             if (leDiLike[posicion]) {
                 album.getFoto(posicion).quitarLike();
@@ -361,7 +354,6 @@ void Consola::verSugerencias() {
     delete[] ids;
     delete[] comunes;
 }
-
 
 void Consola::menuMensajes() {
     bool seguir = true;
