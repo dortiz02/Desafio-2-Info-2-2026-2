@@ -1,4 +1,5 @@
 #include "album.h"
+#include "cadena.h"
 
 Album::Album() : nombre(""), ruta(""), privacidad(Privacidad::Publico), fotos() {
 }
@@ -50,6 +51,19 @@ const Foto& Album::getFoto(int pos) const {
 
 bool Album::esVisibleParaAmigos() const {
     return privacidad == Privacidad::Publico || privacidad == Privacidad::Amigos;
+}
+
+unsigned long long Album::memoriaDinamica() const {
+    unsigned long long total = Cadena::bytesDinamicos(nombre) + Cadena::bytesDinamicos(ruta);
+    total += fotos.memoriaDinamica();
+    for (int i = 0; i < fotos.tamano(); i++) {
+        total += fotos[i].memoriaDinamica();
+    }
+    return total;
+}
+
+unsigned long long Album::bytesTotales() const {
+    return sizeof(Album) + memoriaDinamica();
 }
 
 std::ostream& operator<<(std::ostream& salida, const Album& a) {
