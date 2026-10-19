@@ -15,14 +15,16 @@ private:
     Lista<Mensaje*> mensajes;
     IndiceUsuarios indice;
     Fecha fechaActual;
-    std::string rutaBase;
+    std::string rutaBase;     
     int enviosSesion;
     std::mt19937 generador;
 
     void liberar();
     void copiarDe(const RedSocial& otra);
+    int posicionLimite(const Lista<int>& ids, int claveDia, bool estricto) const;
 
 public:
+    // Codigos de resultado al enviar solicitud
     static const int SOL_OK = 0;
     static const int SOL_NO_EXISTE = 1;
     static const int SOL_MISMO_USUARIO = 2;
@@ -30,6 +32,7 @@ public:
     static const int SOL_YA_ENVIADA = 4;
     static const int SOL_YA_RECIBIDA = 5;
 
+    // Codigos de resultado al enviar mensaje
     static const int MSG_OK = 0;
     static const int MSG_NO_EXISTE = 1;
     static const int MSG_NO_AMIGO = 2;
@@ -63,7 +66,10 @@ public:
     bool sonAmigos(int a, int b) const;
     int amigosEnComun(int a, int b) const;
 
+    // Elige hasta 3 amigos al azar con prioridad segun amigos en comun.
+    // Los ids de "excluidos" solo se usan si no hay suficientes amigos distintos.
     int elegirMejoresAmigos(int idUsuario, int* resultado, const int* excluidos, int cantExcluidos);
+
     int enviarSolicitud(int idUsuario, const std::string& nombreDestino);
     bool aceptarSolicitud(int idUsuario, int posicion);
     int sugerirAmigos(int idUsuario, int k, int* ids, int* comunes) const;
@@ -71,7 +77,11 @@ public:
     int enviarMensaje(int idEmisor, const std::string& nombreDestino, const std::string& texto);
     void recopilarNoLeidos(int idUsuario, Lista<int>& salida) const;
     void marcarLeidos(const Lista<int>& ids);
+    // devuelve false si la fecha de inicio es posterior a la de fin
     bool buscarPorRango(int idUsuario, const Fecha& inicio, const Fecha& fin, Lista<int>& salida) const;
+
+    // Total de bytes de todas las estructuras vivas de la red
+    unsigned long long memoriaTotal() const;
 };
 
 #endif
