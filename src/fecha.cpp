@@ -32,9 +32,19 @@ void Fecha::setAnio(int a) { anio = a; }
 void Fecha::setHora(int h) { hora = h; }
 void Fecha::setMinuto(int m) { minuto = m; }
 
-int Fecha::diasDelMes(int mes, int) {
+bool Fecha::esBisiesto(int anio) {
+    if (anio % 400 == 0) {
+        return true;
+    }
+    if (anio % 100 == 0) {
+        return false;
+    }
+    return anio % 4 == 0;
+}
+
+int Fecha::diasDelMes(int mes, int anio) {
     if (mes == 2) {
-        return 28;
+        return esBisiesto(anio) ? 29 : 28;
     }
     if (mes == 4 || mes == 6 || mes == 9 || mes == 11) {
         return 30;
@@ -59,6 +69,29 @@ long long Fecha::claveCompleta() const {
     return (long long)claveDia() * 10000 + hora * 100 + minuto;
 }
 
+void Fecha::avanzarDia() {
+    dia++;
+    if (dia > diasDelMes(mes, anio)) {
+        dia = 1;
+        mes++;
+        if (mes > 12) {
+            mes = 1;
+            anio++;
+        }
+    }
+}
+
+void Fecha::sumarMinutos(int minutos) {
+    minuto += minutos;
+    hora += minuto / 60;
+    minuto = minuto % 60;
+    int dias = hora / 24;
+    hora = hora % 24;
+    for (int i = 0; i < dias; i++) {
+        avanzarDia();
+    }
+}
+
 bool Fecha::desdeTexto(const std::string& texto, Fecha& resultado) {
     int partes[3];
     int cuantos = Cadena::dividirEnteros(texto, '/', partes, 3);
@@ -77,8 +110,24 @@ bool Fecha::operator==(const Fecha& otra) const {
     return claveCompleta() == otra.claveCompleta();
 }
 
+bool Fecha::operator!=(const Fecha& otra) const {
+    return !(*this == otra);
+}
+
 bool Fecha::operator<(const Fecha& otra) const {
     return claveCompleta() < otra.claveCompleta();
+}
+
+bool Fecha::operator<=(const Fecha& otra) const {
+    return claveCompleta() <= otra.claveCompleta();
+}
+
+bool Fecha::operator>(const Fecha& otra) const {
+    return claveCompleta() > otra.claveCompleta();
+}
+
+bool Fecha::operator>=(const Fecha& otra) const {
+    return claveCompleta() >= otra.claveCompleta();
 }
 
 std::ostream& operator<<(std::ostream& salida, const Fecha& f) {
