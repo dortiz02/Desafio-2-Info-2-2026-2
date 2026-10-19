@@ -18,12 +18,12 @@ private:
     std::string pais;
     Fecha fechaInscripcion;
 
-    Lista<int> amigos;
-    Lista<int> solicitudesRecibidas;
-    Lista<int> solicitudesEnviadas;
-    Lista<int> mensajesRecibidos;
-    Lista<int> mensajesEnviados;
-    Lista<Album*> albumes;
+    Lista<int> amigos;                 // siempre ordenada de menor a mayor
+    Lista<int> solicitudesRecibidas;   // ids de quienes me enviaron solicitud
+    Lista<int> solicitudesEnviadas;    // ids a quienes se la envie yo
+    Lista<int> mensajesRecibidos;      // ids de mensaje, en orden de fecha
+    Lista<int> mensajesEnviados;       // ids de mensaje, en orden de fecha
+    Lista<Album*> albumes;             // el usuario es dueno de sus albumes
 
     void liberarAlbumes();
     void copiarAlbumes(const Usuario& otro);
@@ -52,10 +52,12 @@ public:
     void setCiudad(const std::string& c);
     void setPais(const std::string& p);
 
+    // Amistades
     const Lista<int>& getAmigos() const;
     void agregarAmigo(int idAmigo);
     bool esAmigo(int idUsuario) const;
 
+    // Solicitudes
     const Lista<int>& getSolicitudesRecibidas() const;
     const Lista<int>& getSolicitudesEnviadas() const;
     void agregarSolicitudRecibida(int idEmisor);
@@ -65,15 +67,21 @@ public:
     bool tieneSolicitudRecibidaDe(int idUsuario) const;
     bool tieneSolicitudEnviadaA(int idUsuario) const;
 
+    // Mensajes
     const Lista<int>& getMensajesRecibidos() const;
     const Lista<int>& getMensajesEnviados() const;
     void agregarMensajeRecibido(int idMensaje);
     void agregarMensajeEnviado(int idMensaje);
 
+    // Albumes
     void agregarAlbum(Album* album);
     int cantidadAlbumes() const;
     Album* getAlbum(int pos) const;
 
+    unsigned long long memoriaDinamica() const;
+    unsigned long long bytesTotales() const;
+
+    // Dos usuarios son iguales si tienen el mismo nombre de usuario
     bool operator==(const Usuario& otro) const;
     friend std::ostream& operator<<(std::ostream& salida, const Usuario& u);
 };
