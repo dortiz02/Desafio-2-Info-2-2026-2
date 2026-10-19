@@ -1,5 +1,6 @@
 #include "indiceusuarios.h"
 #include "cadena.h"
+#include "medidor.h"
 
 IndiceUsuarios::IndiceUsuarios() : tabla(nullptr), capacidad(0), cantidad(0) {
 }
@@ -9,6 +10,7 @@ IndiceUsuarios::IndiceUsuarios(const IndiceUsuarios& otro)
     if (capacidad > 0) {
         tabla = new int[capacidad];
         for (int i = 0; i < capacidad; i++) {
+            Medidor::contarIndirecta();
             tabla[i] = otro.tabla[i];
         }
     }
@@ -27,6 +29,7 @@ IndiceUsuarios& IndiceUsuarios::operator=(const IndiceUsuarios& otro) {
         if (capacidad > 0) {
             tabla = new int[capacidad];
             for (int i = 0; i < capacidad; i++) {
+                Medidor::contarIndirecta();
                 tabla[i] = otro.tabla[i];
             }
         }
@@ -37,6 +40,7 @@ IndiceUsuarios& IndiceUsuarios::operator=(const IndiceUsuarios& otro) {
 void IndiceUsuarios::insertar(int id, const Lista<Usuario*>& usuarios) {
     int pos = (int)(Cadena::hash(usuarios[id]->getNombre()) % (unsigned long)capacidad);
     while (tabla[pos] != -1) {
+        Medidor::contarIndirecta();
         pos = (pos + 1) % capacidad;
     }
     tabla[pos] = id;
@@ -49,9 +53,11 @@ void IndiceUsuarios::construir(const Lista<Usuario*>& usuarios) {
     tabla = new int[capacidad];
     cantidad = 0;
     for (int i = 0; i < capacidad; i++) {
+        Medidor::contarIndirecta();
         tabla[i] = -1;
     }
     for (int i = 0; i < usuarios.tamano(); i++) {
+        Medidor::contarIndirecta();
         insertar(i, usuarios);
     }
 }
@@ -62,10 +68,15 @@ int IndiceUsuarios::buscar(const std::string& nombre, const Lista<Usuario*>& usu
     }
     int pos = (int)(Cadena::hash(nombre) % (unsigned long)capacidad);
     while (tabla[pos] != -1) {
+        Medidor::contarIndirecta();
         if (Cadena::iguales(usuarios[tabla[pos]]->getNombre(), nombre)) {
             return tabla[pos];
         }
         pos = (pos + 1) % capacidad;
     }
     return -1;
+}
+
+unsigned long long IndiceUsuarios::memoriaDinamica() const {
+    return (unsigned long long)capacidad * sizeof(int);
 }
