@@ -31,6 +31,10 @@ public:
 
     void marcarLeido();
 
+    unsigned long long memoriaDinamica() const;
+    unsigned long long bytesTotales() const;
+
+    // Compara por fecha de envio
     bool operator<(const Mensaje& otro) const;
     friend std::ostream& operator<<(std::ostream& salida, const Mensaje& m);
 };
